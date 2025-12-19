@@ -16,6 +16,14 @@ Item { // Bar content region
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen?.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen?.width) ? 1 : 0
     readonly property int centerSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
+    readonly property real liveCaptionMinLeftWidth: root.useShortenedForm === 0 ? 220 : 60
+    readonly property real liveCaptionCenterOffset: {
+        if (!LiveCaption.enabled) return 0;
+        const outer = Math.max(0, root.width - middleSection.width);
+        const desiredShift = Math.min(280, outer * 0.1);
+        const maxShift = Math.max(0, outer / 2 - root.liveCaptionMinLeftWidth);
+        return -Math.round(Math.min(desiredShift, maxShift));
+    }
 
     component VerticalBarSeparator: Rectangle {
         Layout.topMargin: Appearance.sizes.baseBarHeight / 3
@@ -103,8 +111,13 @@ Item { // Bar content region
             top: parent.top
             bottom: parent.bottom
             horizontalCenter: parent.horizontalCenter
+            horizontalCenterOffset: root.liveCaptionCenterOffset
         }
         spacing: 4
+
+        Behavior on anchors.horizontalCenterOffset {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
 
         BarGroup {
             id: leftCenterGroup
@@ -315,6 +328,27 @@ Item { // Bar content region
                 }
             }
 
+            CircleUtilButton {
+                id: liveCaptionToggle
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                Layout.fillWidth: false
+                hoverEnabled: !Config.options.bar.tooltips.clickToShow
+                toggled: LiveCaption.enabled
+                onClicked: LiveCaption.toggleEnabled()
+
+                PopupToolTip {
+                    text: liveCaptionToggle.toggled ? Translation.tr("Disable live captions") : Translation.tr("Enable live captions")
+                }
+
+                MaterialSymbol {
+                    horizontalAlignment: Qt.AlignHCenter
+                    fill: 0
+                    text: liveCaptionToggle.toggled ? "subtitles" : "subtitles_off"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: liveCaptionToggle.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+                }
+            }
+
             SysTray {
                 visible: root.useShortenedForm === 0
                 Layout.fillWidth: false
@@ -325,6 +359,34 @@ Item { // Bar content region
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+
+                clip: true
+
+                StyledText {
+                    id: liveCaptionText
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    visible: LiveCaption.enabled || opacity > 0
+                    opacity: LiveCaption.enabled ? 1 : 0
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+                    horizontalAlignment: Text.AlignRight
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
+                    elide: Text.ElideLeft
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.2)
+                    text: {
+                        if (!LiveCaption.enabled) return "";
+                        if (LiveCaption.caption.length > 0) return LiveCaption.caption;
+                        if (LiveCaption.lastError.length > 0) return LiveCaption.lastError;
+                        if (LiveCaption.status.length > 0) return LiveCaption.status;
+                        if (LiveCaption.running) return Translation.tr("Listening…");
+                        return Translation.tr("Starting…");
+                    }
+                }
             }
 
             // Weather

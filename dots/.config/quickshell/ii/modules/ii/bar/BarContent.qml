@@ -315,6 +315,28 @@ Item { // Bar content region
                 }
             }
 
+            CircleUtilButton {
+                id: liveCaptionToggle
+                Layout.alignment: Qt.AlignVCenter
+                toggled: LiveCaption.enabled
+                buttonRadius: Appearance.rounding.full
+                onClicked: LiveCaption.toggleEnabled()
+                altAction: event => LiveCaption.retry()
+
+                colBackgroundToggled: LiveCaption.faulted ? Appearance.colors.colErrorContainer : Appearance.colors.colPrimary
+                colBackgroundToggledHover: LiveCaption.faulted ? Appearance.colors.colErrorContainerHover : Appearance.colors.colPrimaryHover
+                colRippleToggled: LiveCaption.faulted ? Appearance.colors.colErrorContainerActive : Appearance.colors.colPrimaryActive
+
+                MaterialSymbol {
+                    horizontalAlignment: Qt.AlignHCenter
+                    fill: 0
+                    text: LiveCaption.enabled ? "subtitles" : "subtitles_off"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: !liveCaptionToggle.toggled ? Appearance.colors.colOnLayer2 :
+                        LiveCaption.faulted ? Appearance.colors.colOnErrorContainer : Appearance.m3colors.m3onPrimary
+                }
+            }
+
             SysTray {
                 visible: root.useShortenedForm === 0
                 Layout.fillWidth: false
@@ -323,8 +345,77 @@ Item { // Bar content region
             }
 
             Item {
+                id: liveCaptionSlot
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                clip: true
+
+                readonly property bool hasCaptions: (LiveCaption.text ?? "").trim().length > 0 || (captionDisplay.committedHistory.length > 0)
+
+                readonly property string statusText: {
+                    if (!LiveCaption.enabled) return "";
+
+                    if (LiveCaption.settingUp) {
+                        const s = (LiveCaption.setupStatusLine ?? "").trim();
+                        if (s.length) return s;
+                        if (!LiveCaption.depsInstalled) return Translation.tr("Installing caption deps…");
+                        if (!LiveCaption.configured) return Translation.tr("Downloading caption model…");
+                        return Translation.tr("Setting up captions…");
+                    }
+
+                    if (LiveCaption.running)
+                        return Translation.tr("Listening…");
+
+                    if (LiveCaption.faulted) {
+                        const err = (LiveCaption.lastErrorLine ?? "").trim();
+                        return err.length ? Translation.tr("Caption error: %1").arg(err) :
+                            LiveCaption.lastExitCode ? Translation.tr("Caption stopped (exit %1)").arg(LiveCaption.lastExitCode) :
+                            Translation.tr("Caption stopped");
+                    }
+
+                    if (!LiveCaption.configured)
+                        return Translation.tr("Set caption model…");
+
+                    return Translation.tr("Starting… (%1)").arg(LiveCaption.effectiveSource);
+                }
+
+                CaptionDisplay {
+                    id: captionDisplay
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: parent.top
+                        bottom: parent.bottom
+                        leftMargin: 6
+                        rightMargin: 6
+                    }
+                    visible: LiveCaption.running && liveCaptionSlot.hasCaptions
+                    text: LiveCaption.text ?? ""
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colOnLayer0
+                }
+
+                StyledText {
+                    visible: !captionDisplay.visible
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: parent.top
+                        bottom: parent.bottom
+                        leftMargin: 6
+                        rightMargin: 6
+                    }
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    lineHeightMode: Text.ProportionalHeight
+                    lineHeight: 0.75
+                    color: !LiveCaption.enabled ? Appearance.colors.colOnLayer0 :
+                        LiveCaption.faulted ? Appearance.colors.colError :
+                        Appearance.colors.colSubtext
+                    horizontalAlignment: Text.AlignRight
+                    verticalAlignment: Text.AlignBottom
+                    wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                    text: liveCaptionSlot.statusText
+                }
             }
 
             // Weather
@@ -338,4 +429,5 @@ Item { // Bar content region
             }
         }
     }
+
 }

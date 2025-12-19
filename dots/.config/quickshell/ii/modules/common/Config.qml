@@ -463,6 +463,18 @@ Singleton {
                 property int interval: 4
             }
 
+            property JsonObject liveCaption: JsonObject {
+                property bool enabled: false
+                // Directory containing sherpa-onnx streaming model files (encoder/decoder/joiner .onnx + tokens.txt)
+                property string modelDir: ""
+                // "monitor" = speaker output, "input" = microphone, "both" = mix both
+                property string source: "monitor"
+                property bool depsInstalled: false
+                property int numThreads: 4
+                property int updateIntervalMs: 120
+                property int historyChars: 320
+            }
+
             property JsonObject search: JsonObject {
                 property int nonAppResultDelay: 30 // This prevents lagging when typing
                 property string engineBaseUrl: "https://www.google.com/search?q="

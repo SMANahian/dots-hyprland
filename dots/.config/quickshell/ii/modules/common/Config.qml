@@ -474,7 +474,7 @@ Singleton {
                 // "monitor" = speaker output, "input" = microphone, "both" = mix both
                 property string source: "monitor"
                 property bool depsInstalled: false
-                property int numThreads: 4
+                property int numThreads: 1
                 property int updateIntervalMs: 120
                 property int historyChars: 320
             }
